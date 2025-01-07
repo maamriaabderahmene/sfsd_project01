@@ -1,0 +1,102 @@
+"C:\Program Files\JetBrains\CLion 2024.3.1.1\bin\cmake\win\x64\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=C:/Program Files/JetBrains/CLion 2024.3.1.1/bin/ninja/win/x64/ninja.exe" -G Ninja -S C:\Users\pc\CLionProjects\untitled -B C:\Users\pc\CLionProjects\untitled\cmake-build-debug
+CMake Deprecation Warning at CMakeLists.txt:24 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+CMake Error at CMakeLists.txt:57 (include):
+  include could not find requested file:
+
+    build/cmake/policies.cmake
+
+
+CMake Error at CMakeLists.txt:65 (file):
+  file failed to open for reading (No such file or directory):
+
+    C:/Users/pc/CLionProjects/untitled/include/wx/version.h
+
+
+CMake Error at CMakeLists.txt:66 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:68 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:70 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:72 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:74 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:76 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:80 (math):
+  math cannot parse the expression: " % 2": syntax error, unexpected exp_MOD
+  (2).
+
+
+CMake Error at CMakeLists.txt:88 (file):
+  file failed to open for reading (No such file or directory):
+
+    C:/Users/pc/CLionProjects/untitled/build/bakefiles/version.bkl
+
+
+CMake Error at CMakeLists.txt:89 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:91 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:93 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:95 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:97 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:99 (string):
+  string sub-command REGEX, mode MATCH needs at least 5 arguments total to
+  command.
+
+
+CMake Error at CMakeLists.txt:101 (math):
+  math cannot parse the expression: " - ": syntax error, unexpected end of
+  file (3).
+
+
+CMake Error at CMakeLists.txt:112 (project):
+  VERSION ".." format invalid.
+
+
+-- Configuring incomplete, errors occurred!
