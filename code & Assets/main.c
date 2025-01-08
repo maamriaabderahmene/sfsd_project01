@@ -362,41 +362,97 @@ void calculer_moyenne(Etudiant *etudiant) {
     etudiant->moyenne = somme_notes / somme_coefficients;
 }
 // Hidouchi Diaa takes calculer moyen an handleadd students
+
 void HandleAddStudent(HWND hwnd) {
     Etudiant etudiant;
     char buffer[256];
+    int allFieldsFilled = 1; // Flag to track if all fields are filled
 
     // Get the full name
     GetWindowText(hInputFields[0], buffer, sizeof(buffer));
+    if (strlen(buffer) == 0) {
+        MessageBox(hwnd, "Full name is required!", "Error", MB_OK | MB_ICONERROR);
+        allFieldsFilled = 0;
+    }
     strncpy(etudiant.full_name, buffer, MAX_NAME - 1);
     etudiant.full_name[MAX_NAME - 1] = '\0';
 
     // Get the birth year
     GetWindowText(hInputFields[1], buffer, sizeof(buffer));
-    etudiant.annee_naissance = atoi(buffer);
+    if (strlen(buffer) == 0) {
+        MessageBox(hwnd, "Birth year is required!", "Error", MB_OK | MB_ICONERROR);
+        allFieldsFilled = 0;
+    } else {
+        etudiant.annee_naissance = atoi(buffer);
+        if (etudiant.annee_naissance < 1990 || etudiant.annee_naissance > 2020) {
+            MessageBox(hwnd, "Birth year must be between 1990 and 2020!", "Error", MB_OK | MB_ICONERROR);
+            return; // Exit without resetting fields
+        }
+    }
 
     // Get the matricule
     GetWindowText(hInputFields[2], buffer, sizeof(buffer));
+    if (strlen(buffer) == 0) {
+        MessageBox(hwnd, "Matricule is required!", "Error", MB_OK | MB_ICONERROR);
+        allFieldsFilled = 0;
+    }
     etudiant.numero_inscription = atoi(buffer);
+
+    // Check if the matricule already exists
+    FILE *file = fopen(FILENAME, "r");
+    if (file) {
+        int existingMatricule;
+        while (fgets(buffer, sizeof(buffer), file)) {
+            sscanf(buffer, "%d,", &existingMatricule); // Read the matricule from the file
+            if (existingMatricule == etudiant.numero_inscription) {
+                fclose(file);
+                MessageBox(hwnd, "This matricule already exists!", "Error", MB_OK | MB_ICONERROR);
+                return; // Exit without saving or resetting fields
+            }
+        }
+        fclose(file);
+    }
 
     // Get the class
     GetWindowText(hInputFields[3], buffer, sizeof(buffer));
+    if (strlen(buffer) == 0) {
+        MessageBox(hwnd, "Class is required!", "Error", MB_OK | MB_ICONERROR);
+        allFieldsFilled = 0;
+    }
     strncpy(etudiant.classe, buffer, MAX_CLASSE - 1);
     etudiant.classe[MAX_CLASSE - 1] = '\0';
 
     // Get the grades
     for (int i = 0; i < MAX_NOTES; i++) {
         GetWindowText(hInputFields[4 + i], buffer, sizeof(buffer));
-        etudiant.notes[i] = atof(buffer);
+        if (strlen(buffer) == 0) {
+            char errorMsg[50];
+            sprintf(errorMsg, "Grade %d is required!", i + 1);
+            MessageBox(hwnd, errorMsg, "Error", MB_OK | MB_ICONERROR);
+            allFieldsFilled = 0;
+        } else {
+            etudiant.notes[i] = atof(buffer);
+            if (etudiant.notes[i] < 0 || etudiant.notes[i] > 20) {
+                char errorMsg[50];
+                sprintf(errorMsg, "Grade %d must be between 0 and 20!", i + 1);
+                MessageBox(hwnd, errorMsg, "Error", MB_OK | MB_ICONERROR);
+                return; // Exit without resetting fields
+            }
+        }
+    }
+
+    // If any field is empty, return without proceeding
+    if (!allFieldsFilled) {
+        return;
     }
 
     // Calculate the average
     calculer_moyenne(&etudiant);
     etudiant.supprime = 0;
 
-    FILE *file = fopen(FILENAME, "a");
+    // Save the student data to the file
+    file = fopen(FILENAME, "a");
     if (file) {
-        // Save the student data to the file
         fprintf(file, "%d,%s,%d,%s", etudiant.numero_inscription, etudiant.full_name, etudiant.annee_naissance, etudiant.classe);
         for (int i = 0; i < MAX_NOTES; i++) {
             fprintf(file, ",%.2f", etudiant.notes[i]);
@@ -409,6 +465,8 @@ void HandleAddStudent(HWND hwnd) {
         MessageBox(hwnd, "Error saving student data!", "Error", MB_OK | MB_ICONERROR);
     }
 }
+
+
 Etudiant searchedStudent;
 // Benrahmoune aness takes handlesearchstudent fonction
 void HandleSearchStudent(HWND hwnd) {
@@ -610,59 +668,104 @@ void HandleSubmitModifyStudent(HWND hwnd) {
     Etudiant etudiant;
     char buffer[256];
 
-    // Get student details from input fields
+    // Validate and get student details
+    // Full Name
     GetWindowText(hInputFields[1], buffer, sizeof(buffer));
+    if (strlen(buffer) == 0) {
+        MessageBox(hwnd, "Full Name is required!", "Error", MB_OK | MB_ICONERROR);
+        return;
+    }
     strncpy(etudiant.full_name, buffer, MAX_NAME - 1);
     etudiant.full_name[MAX_NAME - 1] = '\0';
 
+    // Birth Year
     GetWindowText(hInputFields[2], buffer, sizeof(buffer));
-    etudiant.annee_naissance = atoi(buffer);
-
-    GetWindowText(hInputFields[3], buffer, sizeof(buffer));
-    etudiant.numero_inscription = atoi(buffer);
-
-    GetWindowText(hInputFields[4], buffer, sizeof(buffer));
-    strncpy(etudiant.classe, buffer, MAX_CLASSE - 1);
-    etudiant.classe[MAX_CLASSE - 1] = '\0';
-
-    for (int i = 0; i < MAX_NOTES; i++) {
-        GetWindowText(hInputFields[5 + i], buffer, sizeof(buffer));
-        etudiant.notes[i] = atof(buffer);
+    if (strlen(buffer) == 0) {
+        MessageBox(hwnd, "Birth Year is required!", "Error", MB_OK | MB_ICONERROR);
+        return;
     }
-
-    calculer_moyenne(&etudiant);
-    etudiant.supprime = 0;
-
-    // Open the file for updating
-    FILE *file = fopen(FILENAME, "r+");
-    if (!file) {
-        MessageBox(hwnd, "Error updating student data!", "Error", MB_OK | MB_ICONERROR);
+    etudiant.annee_naissance = atoi(buffer);
+    if (etudiant.annee_naissance < 1990 || etudiant.annee_naissance > 2020) {
+        MessageBox(hwnd, "Birth Year must be between 1990 and 2020!", "Error", MB_OK | MB_ICONERROR);
         return;
     }
 
-    // Move to the correct position
+    // Matricule
+    GetWindowText(hInputFields[3], buffer, sizeof(buffer));
+    if (strlen(buffer) == 0) {
+        MessageBox(hwnd, "Matricule is required!", "Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+    etudiant.numero_inscription = atoi(buffer);
+
+    // Check for unique matricule
+    FILE *file = fopen(FILENAME, "r+");
+    if (!file) {
+        MessageBox(hwnd, "Error opening file!", "Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    Etudiant temp_etudiant;
+    rewind(file);
+    while (fscanf(file, "%d,%49[^,],%d,%9[^,],%f,%f,%f,%f,%f,%d\n",
+                  &temp_etudiant.numero_inscription, temp_etudiant.full_name,
+                  &temp_etudiant.annee_naissance, temp_etudiant.classe,
+                  &temp_etudiant.notes[0], &temp_etudiant.notes[1], &temp_etudiant.notes[2],
+                  &temp_etudiant.notes[3], &temp_etudiant.moyenne, &temp_etudiant.supprime) == 10) {
+        if (temp_etudiant.numero_inscription == etudiant.numero_inscription &&
+            ftell(file) != global_record_position && !temp_etudiant.supprime) {
+            fclose(file);
+            MessageBox(hwnd, "Matricule is already in use by another student!", "Error", MB_OK | MB_ICONERROR);
+            return;
+        }
+    }
+
+    // Class
+    GetWindowText(hInputFields[4], buffer, sizeof(buffer));
+    if (strlen(buffer) == 0) {
+        MessageBox(hwnd, "Class is required!", "Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+    strncpy(etudiant.classe, buffer, MAX_CLASSE - 1);
+    etudiant.classe[MAX_CLASSE - 1] = '\0';
+
+    // Grades
+    for (int i = 0; i < MAX_NOTES; i++) {
+        GetWindowText(hInputFields[5 + i], buffer, sizeof(buffer));
+        if (strlen(buffer) == 0) {
+            char errorMsg[50];
+            sprintf(errorMsg, "Grade %d is required!", i + 1);
+            MessageBox(hwnd, errorMsg, "Error", MB_OK | MB_ICONERROR);
+            fclose(file);
+            return;
+        }
+        etudiant.notes[i] = atof(buffer);
+        if (etudiant.notes[i] < 0 || etudiant.notes[i] > 20) {
+            char errorMsg[50];
+            sprintf(errorMsg, "Grade %d must be between 0 and 20!", i + 1);
+            MessageBox(hwnd, errorMsg, "Error", MB_OK | MB_ICONERROR);
+            fclose(file);
+            return;
+        }
+    }
+
+    // Calculate the average
+    calculer_moyenne(&etudiant);
+
+    // Overwrite the record
     fseek(file, global_record_position, SEEK_SET);
-
-    // Overwrite the old line with spaces to prevent residual data
-    memset(buffer, ' ', sizeof(buffer)); // Fill buffer with spaces
-    buffer[sizeof(buffer) - 1] = '\0';   // Null-terminate
-    fwrite(buffer, sizeof(char), strlen(buffer), file);
-
-    // Return to the record position for writing the new record
-    fseek(file, global_record_position, SEEK_SET);
-
-    // Write the updated record
     fprintf(file, "%d,%s,%d,%s", etudiant.numero_inscription, etudiant.full_name,
             etudiant.annee_naissance, etudiant.classe);
     for (int i = 0; i < MAX_NOTES; i++) {
         fprintf(file, ",%.2f", etudiant.notes[i]);
     }
-    fprintf(file, ",%.2f,%d", etudiant.moyenne, etudiant.supprime);
+    fprintf(file, ",%.2f,%d\n", etudiant.moyenne, etudiant.supprime);
 
     fclose(file);
 
     MessageBox(hwnd, "Student details updated successfully!", "Success", MB_OK | MB_ICONINFORMATION);
 }
+
  // djassem aissaoua takes  HandleExtractByClass
 
 
