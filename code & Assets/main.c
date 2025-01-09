@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <commctrl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,9 +68,18 @@ void HandleDeleteStudent(HWND hwnd);
 void HandleModifyStudent(HWND hwnd);
 void HandleSubmitModifyStudent(HWND hwnd);
 void HandleExtractByClass(HWND hwnd);
+void ShowExtractResult(HWND hwnd);
+void ShowReorganizeResult(HWND hwnd);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     ShowSplashScreen(hInstance);
+
+    INITCOMMONCONTROLSEX icex;
+    icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+    icex.dwICC = ICC_LISTVIEW_CLASSES;
+    InitCommonControlsEx(&icex);
+
+    InitCommonControls();
 
     WNDCLASS wc = {0};
     wc.lpfnWndProc = WindowProc;
@@ -453,19 +463,33 @@ void HandleAddStudent(HWND hwnd) {
     // Save the student data to the file
     file = fopen(FILENAME, "a");
     if (file) {
-        fprintf(file, "%d,%s,%d,%s", etudiant.numero_inscription, etudiant.full_name, etudiant.annee_naissance, etudiant.classe);
+        // Ensure that the new record starts on a new line
+        fseek(file, 0, SEEK_END);
+        long position = ftell(file);
+
+        if (position > 0) {
+            fseek(file, -1, SEEK_END); // Move to the last character
+            fread(buffer, 1, 1, file); // Read the last character
+            if (buffer[0] != '\n') {
+                fprintf(file, "\n"); // Add a newline if not present
+            }
+        }
+
+        // Write the new record
+        fprintf(file, "%d,%s,%d,%s", etudiant.numero_inscription, etudiant.full_name,
+                etudiant.annee_naissance, etudiant.classe);
         for (int i = 0; i < MAX_NOTES; i++) {
             fprintf(file, ",%.2f", etudiant.notes[i]);
         }
         fprintf(file, ",%.2f,%d\n", etudiant.moyenne, etudiant.supprime);
         fclose(file);
+
         MessageBox(hwnd, "Student added successfully!", "Success", MB_OK | MB_ICONINFORMATION);
         ResetFields(hwnd);
     } else {
         MessageBox(hwnd, "Error saving student data!", "Error", MB_OK | MB_ICONERROR);
     }
 }
-
 
 Etudiant searchedStudent;
 // Benrahmoune aness takes handlesearchstudent fonction
@@ -834,7 +858,205 @@ void HandleExtractByClass(HWND hwnd) {
     char message[256];
     sprintf(message, "Students from class '%s' extracted successfully!\nCheck extractedstudents.txt for details.", class_name);
     MessageBox(hwnd, message, "Success", MB_OK | MB_ICONINFORMATION);
+    ShowExtractResult(hwnd); // Show the extracted results in a table
+
 }
+void ShowExtractResult(HWND hwnd) {
+    ClearChildWindows(hwnd);
+
+    // Create the list view control
+    HWND hListView = CreateWindow(WC_LISTVIEW, "",
+                                  WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL,
+                                  20, 20, 700, 400, hwnd, NULL, NULL, NULL);
+
+    // Define the columns
+    LVCOLUMN lvColumn;
+    char *columnNames[] = {"Matricule", "Full Name", "Birth Year", "Class",
+                           "Grade 1", "Grade 2", "Grade 3", "Grade 4",
+                           "Average"};
+    int columnWidths[] = {100, 150, 100, 100, 80, 80, 80, 80, 100};
+
+    for (int i = 0; i < 9; i++) {
+        lvColumn.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+        lvColumn.cx = columnWidths[i];
+        lvColumn.pszText = columnNames[i];
+        lvColumn.iSubItem = i;
+        ListView_InsertColumn(hListView, i, &lvColumn);
+    }
+
+    // Read the extracted students from the file
+    FILE *file = fopen("extractedstudents.txt", "r");
+    if (!file) {
+        MessageBox(hwnd, "Error opening extractedstudents.txt!", "Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    char buffer[512];
+    LVITEM lvItem;
+    int rowIndex = 0;
+
+    while (fgets(buffer, sizeof(buffer), file)) {
+        Etudiant etudiant;
+        sscanf(buffer, "%d,%49[^,],%d,%9[^,],%f,%f,%f,%f,%f,%d",
+               &etudiant.numero_inscription, etudiant.full_name,
+               &etudiant.annee_naissance, etudiant.classe,
+               &etudiant.notes[0], &etudiant.notes[1], &etudiant.notes[2], &etudiant.notes[3],
+               &etudiant.moyenne, &etudiant.supprime);
+
+        // Insert the row into the list view
+        char subItemText[100];
+
+        lvItem.mask = LVIF_TEXT;
+        lvItem.iItem = rowIndex;
+        lvItem.iSubItem = 0;
+        sprintf(subItemText, "%d", etudiant.numero_inscription);
+        lvItem.pszText = subItemText;
+        ListView_InsertItem(hListView, &lvItem);
+
+        ListView_SetItemText(hListView, rowIndex, 1, etudiant.full_name);
+        sprintf(subItemText, "%d", etudiant.annee_naissance);
+        ListView_SetItemText(hListView, rowIndex, 2, subItemText);
+        ListView_SetItemText(hListView, rowIndex, 3, etudiant.classe);
+
+        for (int i = 0; i < MAX_NOTES; i++) {
+            sprintf(subItemText, "%.2f", etudiant.notes[i]);
+            ListView_SetItemText(hListView, rowIndex, 4 + i, subItemText);
+        }
+
+        sprintf(subItemText, "%.2f", etudiant.moyenne);
+        ListView_SetItemText(hListView, rowIndex, 8, subItemText);
+
+        rowIndex++;
+    }
+    fclose(file);
+
+    // Back button
+    CreateWindow("BUTTON", "Back", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+                 20, 440, 150, 30, hwnd, (HMENU)BTN_RESET, NULL, NULL);
+}
+
+#include <commctrl.h>
+
+void ShowReorganizeResult(HWND hwnd) {
+    FILE *file = fopen(FILENAME, "r");
+    FILE *deletedFile = fopen("deletedstudents.txt", "r");
+
+    if (!file || !deletedFile) {
+        MessageBox(hwnd, "Error opening files for display!", "Error", MB_OK | MB_ICONERROR);
+        if (file) fclose(file);
+        if (deletedFile) fclose(deletedFile);
+        return;
+    }
+
+    Etudiant etudiant;
+
+    // Create ListView for active students
+    HWND hListViewActive = CreateWindow(WC_LISTVIEW, "",
+                                        WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_EDITLABELS,
+                                        10, 10, 600, 200, hwnd, NULL, NULL, NULL);
+
+    // Add columns to the active students ListView
+    LVCOLUMN lvCol;
+    lvCol.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+    lvCol.cx = 100;
+
+    char *columns[] = {"ID", "Name", "Year", "Class", "Avg"};
+    for (int i = 0; i < 5; i++) {
+        lvCol.pszText = columns[i];
+        lvCol.iSubItem = i;
+        ListView_InsertColumn(hListViewActive, i, &lvCol);
+    }
+
+    // Add rows for active students
+    int rowIndex = 0;
+    LVITEM lvItem;
+    lvItem.mask = LVIF_TEXT;
+
+    while (fscanf(file, "%d,%49[^,],%d,%9[^,],%f,%f,%f,%f,%f,%d\n",
+                  &etudiant.numero_inscription, etudiant.full_name,
+                  &etudiant.annee_naissance, etudiant.classe,
+                  &etudiant.notes[0], &etudiant.notes[1], &etudiant.notes[2], &etudiant.notes[3],
+                  &etudiant.moyenne, &etudiant.supprime) == 10) {
+        if (!etudiant.supprime) {
+            char buffer[100];
+
+            // Add ID
+            lvItem.iItem = rowIndex;
+            lvItem.iSubItem = 0;
+            sprintf(buffer, "%d", etudiant.numero_inscription);
+            lvItem.pszText = buffer;
+            ListView_InsertItem(hListViewActive, &lvItem);
+
+            // Add Name
+            ListView_SetItemText(hListViewActive, rowIndex, 1, etudiant.full_name);
+
+            // Add Year
+            sprintf(buffer, "%d", etudiant.annee_naissance);
+            ListView_SetItemText(hListViewActive, rowIndex, 2, buffer);
+
+            // Add Class
+            ListView_SetItemText(hListViewActive, rowIndex, 3, etudiant.classe);
+
+            // Add Average
+            sprintf(buffer, "%.2f", etudiant.moyenne);
+            ListView_SetItemText(hListViewActive, rowIndex, 4, buffer);
+
+            rowIndex++;
+        }
+    }
+    fclose(file);
+
+    // Create ListView for deleted students
+    HWND hListViewDeleted = CreateWindow(WC_LISTVIEW, "",
+                                         WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_EDITLABELS,
+                                         10, 250, 600, 200, hwnd, NULL, NULL, NULL);
+
+    // Add columns to the deleted students ListView
+    for (int i = 0; i < 5; i++) {
+        lvCol.pszText = columns[i];
+        lvCol.iSubItem = i;
+        ListView_InsertColumn(hListViewDeleted, i, &lvCol);
+    }
+
+    // Add rows for deleted students
+    rowIndex = 0;
+    while (fscanf(deletedFile, "%d,%49[^,],%d,%9[^,],%f,%f,%f,%f,%f,%d\n",
+                  &etudiant.numero_inscription, etudiant.full_name,
+                  &etudiant.annee_naissance, etudiant.classe,
+                  &etudiant.notes[0], &etudiant.notes[1], &etudiant.notes[2], &etudiant.notes[3],
+                  &etudiant.moyenne, &etudiant.supprime) == 10) {
+        char buffer[100];
+
+        // Add ID
+        lvItem.iItem = rowIndex;
+        lvItem.iSubItem = 0;
+        sprintf(buffer, "%d", etudiant.numero_inscription);
+        lvItem.pszText = buffer;
+        ListView_InsertItem(hListViewDeleted, &lvItem);
+
+        // Add Name
+        ListView_SetItemText(hListViewDeleted, rowIndex, 1, etudiant.full_name);
+
+        // Add Year
+        sprintf(buffer, "%d", etudiant.annee_naissance);
+        ListView_SetItemText(hListViewDeleted, rowIndex, 2, buffer);
+
+        // Add Class
+        ListView_SetItemText(hListViewDeleted, rowIndex, 3, etudiant.classe);
+
+        // Add Average
+        sprintf(buffer, "%.2f", etudiant.moyenne);
+        ListView_SetItemText(hListViewDeleted, rowIndex, 4, buffer);
+
+        rowIndex++;
+    }
+    fclose(deletedFile);
+
+    // Notify the user
+    MessageBox(hwnd, "Tables displayed successfully!", "Info", MB_OK | MB_ICONINFORMATION);
+}
+
+
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -861,6 +1083,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     break;
                 case BTN_EXTRACT_SUBMIT:
                     HandleExtractByClass(hwnd);
+                    ShowExtractResult(hwnd);
                 break;
                 case BTN_SUBMIT_DELETE:
                     HandleDeleteStudent(hwnd);
@@ -890,6 +1113,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     break;
                 case BTN_SUBMIT_Reorganize:
                     HandleReorganize(hwnd);
+                    ShowReorganizeResult(hwnd);
                    break;
                 case BTN_SUBMIT:
                     if (GetDlgCtrlID((HWND)lParam) == BTN_EXTRACT) {
@@ -910,6 +1134,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     return 0;
 }
+
+
+
 /*
 1,Ali Ahmed,2001,3A,15.50,12.00,14.00,16.50,14.20,0
 2,Moulay Sarah,2000,2B,18.00,16.50,17.00,19.00,17.40,0
