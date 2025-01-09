@@ -1,0 +1,5 @@
+windows+R
+cmd 
+cd "C:\Users\pc\CLionProjects\code & Assets"
+gcc "C:\Users\pc\CLionProjects\code & Assets\main.c" -o main -lcomctl32
+main
