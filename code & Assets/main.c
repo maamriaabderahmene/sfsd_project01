@@ -40,9 +40,8 @@ typedef struct {
     char classe[MAX_CLASSE];
     float notes[MAX_NOTES];
     float moyenne;
-    int supprime;// if 1 il est supprime logiquement if 0 il est pas supprim
+    int supprime; // if 1, it is logically deleted; if 0, it is not deleted
 } Etudiant;
-
 
 // Global handles for input fields
 HWND hInputFields[10];
@@ -58,9 +57,11 @@ void SHOWSEARCHSTUDENTRESULTINTERFACE(HWND hwnd);
 void ShowDeleteStudentInterface(HWND hwnd);
 void ShowExtractByClassInterface(HWND hwnd);
 void ShowReorganizeInterface(HWND hwnd);
+void ShowExtractResult(HWND hwnd);
 void ResetFields(HWND parent);
 void ShowSplashScreen(HINSTANCE hInstance);
 void ClearChildWindows(HWND parent);
+void ShowReorganizeResult(HWND hwnd);
 void HandleSearchStudent(HWND hwnd);
 void HandleAddStudent(HWND hwnd);
 void HandleReorganize(HWND hwnd);
@@ -68,8 +69,6 @@ void HandleDeleteStudent(HWND hwnd);
 void HandleModifyStudent(HWND hwnd);
 void HandleSubmitModifyStudent(HWND hwnd);
 void HandleExtractByClass(HWND hwnd);
-void ShowExtractResult(HWND hwnd);
-void ShowReorganizeResult(HWND hwnd);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     ShowSplashScreen(hInstance);
@@ -85,7 +84,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = "StudentManagement";
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.hbrBackground = CreateSolidBrush(RGB(128, 0, 128)); // Purple background
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 
     if (!RegisterClass(&wc)) {
         MessageBox(NULL, "Failed to register window class!", "Error", MB_ICONERROR);
@@ -114,27 +114,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 }
 
 void ShowSplashScreen(HINSTANCE hInstance) {
-    // Create a simple splash screen window
     HWND hSplash = CreateWindow(
         "STATIC", NULL,
         WS_POPUP | WS_VISIBLE,
-        CW_USEDEFAULT, CW_USEDEFAULT, 600, 400, // Splash screen dimensions
+        CW_USEDEFAULT, CW_USEDEFAULT, 600, 400,
         NULL, NULL, hInstance, NULL
     );
 
     if (!hSplash) return;
 
-    // Center the splash screen
     RECT desktop;
     GetWindowRect(GetDesktopWindow(), &desktop);
     int x = (desktop.right - 600) / 2;
     int y = (desktop.bottom - 400) / 2;
     SetWindowPos(hSplash, NULL, x, y, 600, 400, SWP_NOZORDER | SWP_SHOWWINDOW);
 
-    // Display an animated logo (example: using a static image)
-    HBITMAP hLogo = (HBITMAP)LoadImage(
-        NULL, "1LOGO3.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE
-    );
+    HBITMAP hLogo = (HBITMAP)LoadImage(NULL, "1LOGO3.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     if (hLogo) {
         HWND hLogoControl = CreateWindow(
             "STATIC", NULL,
@@ -144,10 +139,7 @@ void ShowSplashScreen(HINSTANCE hInstance) {
         SendMessage(hLogoControl, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hLogo);
     }
 
-    // Pause for 4 seconds
     Sleep(4000);
-
-    // Destroy the splash screen
     DestroyWindow(hSplash);
 }
 
@@ -162,20 +154,22 @@ void ClearChildWindows(HWND parent) {
 
 void ShowMainMenu(HWND hwnd) {
     ClearChildWindows(hwnd);
-    CreateWindow("BUTTON", "Add Student", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                 50, 50, 200, 40, hwnd, (HMENU)BTN_ADD, NULL, NULL);
-    CreateWindow("BUTTON", "Search Student", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                 50, 100, 200, 40, hwnd, (HMENU)BTN_SEARCH, NULL, NULL);
-    CreateWindow("BUTTON", "Modify Student", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                 50, 150, 200, 40, hwnd, (HMENU)BTN_MODIFY, NULL, NULL);
-    CreateWindow("BUTTON", "Delete Student", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                 50, 200, 200, 40, hwnd, (HMENU)BTN_DELETE, NULL, NULL);
-    CreateWindow("BUTTON", "Extract By Class", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                 50, 250, 200, 40, hwnd, (HMENU)BTN_EXTRACT, NULL, NULL);
-    CreateWindow("BUTTON", "Reorganize Data", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                 50, 300, 200, 40, hwnd, (HMENU)BTN_REORGANIZE, NULL, NULL);
-    CreateWindow("BUTTON", "Exit", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                 50, 350, 200, 40, hwnd, (HMENU)BTN_EXIT, NULL, NULL);
+
+    // Create buttons with improved styles
+    CreateWindowEx(0, "BUTTON", "Add Student", WS_VISIBLE | WS_CHILD | BS_FLAT | BS_DEFPUSHBUTTON,
+                   50, 50, 200, 40, hwnd, (HMENU)BTN_ADD, NULL, NULL);
+    CreateWindowEx(0, "BUTTON", "Search Student", WS_VISIBLE | WS_CHILD | BS_FLAT | BS_DEFPUSHBUTTON,
+                   50, 100, 200, 40, hwnd, (HMENU)BTN_SEARCH, NULL, NULL);
+    CreateWindowEx(0, "BUTTON", "Modify Student", WS_VISIBLE | WS_CHILD | BS_FLAT | BS_DEFPUSHBUTTON,
+                   50, 150, 200, 40, hwnd, (HMENU)BTN_MODIFY, NULL, NULL);
+    CreateWindowEx(0, "BUTTON", "Delete Student", WS_VISIBLE | WS_CHILD | BS_FLAT | BS_DEFPUSHBUTTON,
+                   50, 200, 200, 40, hwnd, (HMENU)BTN_DELETE, NULL, NULL);
+    CreateWindowEx(0, "BUTTON", "Extract By Class", WS_VISIBLE | WS_CHILD | BS_FLAT | BS_DEFPUSHBUTTON,
+                   50, 250, 200, 40, hwnd, (HMENU)BTN_EXTRACT, NULL, NULL);
+    CreateWindowEx(0, "BUTTON", "Reorganize Data", WS_VISIBLE | WS_CHILD | BS_FLAT | BS_DEFPUSHBUTTON,
+                   50, 300, 200, 40, hwnd, (HMENU)BTN_REORGANIZE, NULL, NULL);
+    CreateWindowEx(0, "BUTTON", "Exit", WS_VISIBLE | WS_CHILD | BS_FLAT | BS_DEFPUSHBUTTON,
+                   50, 350, 200, 40, hwnd, (HMENU)BTN_EXIT, NULL, NULL);
 }
 
 void ShowAddStudentInterface(HWND hwnd) {
@@ -1064,6 +1058,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             ShowMainMenu(hwnd);
             break;
 
+        case WM_CTLCOLORBTN: {
+            HDC hdc = (HDC)wParam;
+            SetBkColor(hdc, RGB(128, 0, 128)); // Purple background
+            SetTextColor(hdc, RGB(255, 255, 255)); // White text
+            return (LRESULT)CreateSolidBrush(RGB(128, 0, 128));
+        }
+
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
                 case BTN_ADD:
@@ -1084,7 +1085,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 case BTN_EXTRACT_SUBMIT:
                     HandleExtractByClass(hwnd);
                     ShowExtractResult(hwnd);
-                break;
+                    break;
                 case BTN_SUBMIT_DELETE:
                     HandleDeleteStudent(hwnd);
                     break;
@@ -1107,14 +1108,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 case BTN_SUBMIT_SEARCH2:
                     HandleSearchStudent(hwnd);
                     SHOWSEARCHSTUDENTRESULTINTERFACE(hwnd);
-                break;
+                    break;
                 case BTN_SUBMIT_MODIFY:
                     HandleSubmitModifyStudent(hwnd);
                     break;
                 case BTN_SUBMIT_Reorganize:
                     HandleReorganize(hwnd);
                     ShowReorganizeResult(hwnd);
-                   break;
+                    break;
                 case BTN_SUBMIT:
                     if (GetDlgCtrlID((HWND)lParam) == BTN_EXTRACT) {
                         HandleExtractByClass(hwnd);
