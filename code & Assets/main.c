@@ -155,7 +155,7 @@ void ClearChildWindows(HWND parent) {
 void ShowMainMenu(HWND hwnd) {
     ClearChildWindows(hwnd);
 
-    // Create buttons with improved styles
+    // Create buttons with styles ...............
     CreateWindowEx(0, "BUTTON", "Add Student", WS_VISIBLE | WS_CHILD | BS_FLAT | BS_DEFPUSHBUTTON,
                    50, 50, 200, 40, hwnd, (HMENU)BTN_ADD, NULL, NULL);
     CreateWindowEx(0, "BUTTON", "Search Student", WS_VISIBLE | WS_CHILD | BS_FLAT | BS_DEFPUSHBUTTON,
